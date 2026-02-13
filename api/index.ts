@@ -60,7 +60,7 @@ app.get(["/frame", "/frame/"], (req, res) => {
   res.setHeader("Cache-Control", "no-store");
   return res.status(200).send(
     frameHtml({
-      imageUrl: `${baseUrl}/api/og?screen=home`,
+      imageUrl: `${baseUrl}/frame/image.png?screen=home&v=2`,
       postUrl: `${baseUrl}/frame/action`,
       buttons: [{ label: "Play" }, { label: "Move" }],
       state: { screen: "home" },
@@ -83,7 +83,7 @@ app.post(["/frame/action", "/frame/action/"], (req, res) => {
       res.setHeader("Cache-Control", "no-store");
       return res.status(200).send(
         frameHtml({
-          imageUrl: `${baseUrl}/api/og?screen=play&n=0`,
+          imageUrl: `${baseUrl}/frame/image.png?screen=play&n=0&v=2`,
           postUrl: `${baseUrl}/frame/action`,
           buttons: [
             { label: "UP" },
@@ -105,7 +105,7 @@ app.post(["/frame/action", "/frame/action/"], (req, res) => {
   res.setHeader("Cache-Control", "no-store");
   return res.status(200).send(
     frameHtml({
-      imageUrl: `${baseUrl}/api/og?screen=play&n=${state.moves || 0}`,
+      imageUrl: `${baseUrl}/frame/image.png?screen=play&n=${state.moves || 0}&v=2`,
       postUrl: `${baseUrl}/frame/action`,
       buttons: [
         { label: "UP" },
