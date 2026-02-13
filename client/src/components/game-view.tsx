@@ -1,8 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import Phaser from 'phaser';
-import { Boot } from '../game/scenes/Boot';
-import { Preloader } from '../game/scenes/Preloader';
-import { GameScene } from '../game/scenes/Game';
 import { GAME_WIDTH, GAME_HEIGHT, GameEvents, COLORS } from '../game/config';
 import { Button } from './ui/button';
 import { ArrowUp, ArrowDown, ArrowLeft, ArrowRight, RefreshCw, Trophy } from 'lucide-react';
@@ -16,7 +12,7 @@ interface GameViewProps {
 
 export function GameView({ seed, onGameOver }: GameViewProps) {
     const gameRef = useRef<HTMLDivElement>(null);
-    const phaserRef = useRef<Phaser.Game | null>(null);
+    const phaserRef = useRef<any>(null);
     const [score, setScore] = useState(0);
     const [gems, setGems] = useState(0);
     const [isGameOver, setIsGameOver] = useState(false);
@@ -28,53 +24,68 @@ export function GameView({ seed, onGameOver }: GameViewProps) {
     useEffect(() => {
         if (!gameRef.current) return;
 
-        const config: Phaser.Types.Core.GameConfig = {
-            type: Phaser.AUTO,
-            width: GAME_WIDTH,
-            height: GAME_HEIGHT,
-            parent: gameRef.current,
-            backgroundColor: COLORS.BACKGROUND,
-            physics: {
-                default: 'arcade',
-                arcade: {
-                    gravity: { x: 0, y: 0 }, // No gravity, top-down grid
-                }
-            },
-            scene: [Boot, Preloader, GameScene],
-            pixelArt: true, // Crucial for retro feel
-            scale: {
-                mode: Phaser.Scale.FIT,
-                autoCenter: Phaser.Scale.CENTER_BOTH
-            }
-        };
+        let destroyed = false;
+        let game: any;
 
-        const game = new Phaser.Game(config);
-        phaserRef.current = game;
+        (async () => {
+            // Lazy-load Phaser + scenes so the initial bundle is smaller on slow networks.
+            const PhaserMod = await import('phaser');
+            const Phaser = PhaserMod.default;
+            const { Boot } = await import('../game/scenes/Boot');
+            const { Preloader } = await import('../game/scenes/Preloader');
+            const { GameScene } = await import('../game/scenes/Game');
 
-        // Wait until the Preloader finished generating procedural textures.
-        game.events.once('assets-ready', () => {
-            // Pass seed to game scene
-            game.scene.start('Game', { seed });
+            if (destroyed || !gameRef.current) return;
 
-            const gameScene = game.scene.getScene('Game');
-            gameScene.events.on(GameEvents.SCORE_UPDATE, (data: any) => {
-                setScore(data.score);
-                setGems(data.gems);
+            const config: any = {
+                type: Phaser.AUTO,
+                width: GAME_WIDTH,
+                height: GAME_HEIGHT,
+                parent: gameRef.current,
+                backgroundColor: COLORS.BACKGROUND,
+                physics: {
+                    default: 'arcade',
+                    arcade: {
+                        gravity: { x: 0, y: 0 },
+                    },
+                },
+                scene: [Boot, Preloader, GameScene],
+                pixelArt: true,
+                scale: {
+                    mode: Phaser.Scale.FIT,
+                    autoCenter: Phaser.Scale.CENTER_BOTH,
+                },
+            };
+
+            game = new Phaser.Game(config);
+            phaserRef.current = game;
+
+            game.events.once('assets-ready', () => {
+                game.scene.start('Game', { seed });
+
+                const gameScene = game.scene.getScene('Game');
+                gameScene.events.on(GameEvents.SCORE_UPDATE, (data: any) => {
+                    setScore(data.score);
+                    setGems(data.gems);
+                });
+
+                gameScene.events.on(GameEvents.GAME_OVER, (result: any) => {
+                    setIsGameOver(true);
+                    setGameResult({ ...result, title: 'GAME OVER' });
+                });
+
+                gameScene.events.on(GameEvents.GAME_WON, (result: any) => {
+                    setIsGameOver(true);
+                    setGameResult({ ...result, title: 'VICTORY!' });
+                });
             });
-
-            gameScene.events.on(GameEvents.GAME_OVER, (result: any) => {
-                setIsGameOver(true);
-                setGameResult({ ...result, title: "GAME OVER" });
-            });
-
-            gameScene.events.on(GameEvents.GAME_WON, (result: any) => {
-                setIsGameOver(true);
-                setGameResult({ ...result, title: "VICTORY!" });
-            });
-        });
+        })();
 
         return () => {
-            game.destroy(true);
+            destroyed = true;
+            try {
+                game?.destroy(true);
+            } catch {}
         };
     }, [seed]);
 
@@ -87,7 +98,7 @@ export function GameView({ seed, onGameOver }: GameViewProps) {
 
     // Controls
     const handleControl = (dx: number, dy: number) => {
-        const gameScene = phaserRef.current?.scene.getScene('Game') as GameScene;
+        const gameScene = phaserRef.current?.scene.getScene('Game');
         if (gameScene && gameScene.scene.isActive()) {
             gameScene.setNextMove(dx, dy);
         }
