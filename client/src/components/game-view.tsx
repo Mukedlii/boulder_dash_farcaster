@@ -51,26 +51,26 @@ export function GameView({ seed, onGameOver }: GameViewProps) {
         const game = new Phaser.Game(config);
         phaserRef.current = game;
 
-        // Listen for game events
-        game.events.on('ready', () => {
-             // Pass seed to game scene
-             game.scene.start('Game', { seed });
-             
-             const gameScene = game.scene.getScene('Game');
-             gameScene.events.on(GameEvents.SCORE_UPDATE, (data: any) => {
-                 setScore(data.score);
-                 setGems(data.gems);
-             });
-             
-             gameScene.events.on(GameEvents.GAME_OVER, (result: any) => {
-                 setIsGameOver(true);
-                 setGameResult({ ...result, title: "GAME OVER" });
-             });
+        // Wait until the Preloader finished generating procedural textures.
+        game.events.once('assets-ready', () => {
+            // Pass seed to game scene
+            game.scene.start('Game', { seed });
 
-             gameScene.events.on(GameEvents.GAME_WON, (result: any) => {
-                 setIsGameOver(true);
-                 setGameResult({ ...result, title: "VICTORY!" });
-             });
+            const gameScene = game.scene.getScene('Game');
+            gameScene.events.on(GameEvents.SCORE_UPDATE, (data: any) => {
+                setScore(data.score);
+                setGems(data.gems);
+            });
+
+            gameScene.events.on(GameEvents.GAME_OVER, (result: any) => {
+                setIsGameOver(true);
+                setGameResult({ ...result, title: "GAME OVER" });
+            });
+
+            gameScene.events.on(GameEvents.GAME_WON, (result: any) => {
+                setIsGameOver(true);
+                setGameResult({ ...result, title: "VICTORY!" });
+            });
         });
 
         return () => {

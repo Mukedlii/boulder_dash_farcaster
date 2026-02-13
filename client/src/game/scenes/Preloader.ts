@@ -12,7 +12,10 @@ export class Preloader extends Scene {
     }
 
     create() {
-        this.scene.start('Menu'); // Or go straight to Game if managed by React
+        // Signal to the React wrapper that textures are ready.
+        // (The React wrapper decides which scene to start.)
+        this.game.events.emit('assets-ready');
+        this.scene.stop();
     }
 
     generateTextures() {
