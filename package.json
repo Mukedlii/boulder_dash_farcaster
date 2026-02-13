@@ -74,6 +74,7 @@
     "wouter": "^3.3.5",
     "ws": "^8.18.0",
     "zod": "^3.24.2",
+    "@vercel/og": "^0.8.5",
     "zod-validation-error": "^3.4.0"
   },
   "devDependencies": {
