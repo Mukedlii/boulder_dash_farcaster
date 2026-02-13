@@ -126,10 +126,9 @@ app.get(["/frame/image.png", "/frame/image.png/"], (req, res) => {
   return res.sendFile(imgPath);
 });
 
-// Root: simple info page
+// Root: redirect to the frame (so pasting the domain works)
 app.get("/", (_req, res) => {
-  res.setHeader("Content-Type", "text/plain; charset=utf-8");
-  res.status(200).send("OK. Frame: /frame");
+  res.redirect(302, "/frame");
 });
 
 export default function handler(req: any, res: any) {
