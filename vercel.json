@@ -2,8 +2,8 @@
   "version": 2,
   "buildCommand": "npm run build",
   "routes": [
-    { "src": "/api/og", "dest": "/api/og.tsx" },
-    { "src": "/api/og/", "dest": "/api/og.tsx" },
+    { "src": "/api/og", "dest": "/api/og" },
+    { "src": "/api/og/", "dest": "/api/og" },
     { "src": "/(.*)", "dest": "/api/index.ts" }
   ]
 }
