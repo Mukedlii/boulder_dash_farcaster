@@ -1,41 +1,137 @@
 import express from "express";
 import path from "path";
-import { createServer } from "http";
-import { registerRoutes } from "../server/routes";
 
 const app = express();
 
-// Parse JSON bodies (needed for frame POSTs)
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: false }));
 
-// Serve built client files from dist/public
-const publicDir = path.resolve(process.cwd(), "dist", "public");
-app.use(express.static(publicDir));
-
-// Register API + /frame endpoints
-const httpServer = createServer(app);
-let routesReady: Promise<void> | null = null;
-async function ensureRoutes() {
-  if (!routesReady) {
-    routesReady = (async () => {
-      await registerRoutes(httpServer, app);
-    })();
-  }
-  await routesReady;
+function escapeHtml(s: string) {
+  return s
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
-app.use(async (_req, _res, next) => {
-  await ensureRoutes();
-  next();
+function getBaseUrl(req: any): string {
+  const proto = (req.headers["x-forwarded-proto"] || "https") as string;
+  const host = (req.headers["x-forwarded-host"] || req.headers.host || "") as string;
+  if (!host) return "";
+  return `${proto}://${host}`;
+}
+
+function frameHtml(opts: {
+  imageUrl: string;
+  postUrl: string;
+  buttons: Array<{ label: string }>;
+  state?: any;
+}) {
+  const state = opts.state === undefined ? undefined : JSON.stringify(opts.state);
+  const buttonMetas = opts.buttons
+    .slice(0, 4)
+    .map(
+      (b, i) =>
+        `<meta property="fc:frame:button:${i + 1}" content="${escapeHtml(b.label)}" />`,
+    )
+    .join("\n");
+
+  return `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta property="og:title" content="Boulder Dash" />
+    <meta property="og:image" content="${escapeHtml(opts.imageUrl)}" />
+    <meta property="fc:frame" content="vNext" />
+    <meta property="fc:frame:image" content="${escapeHtml(opts.imageUrl)}" />
+    <meta property="fc:frame:post_url" content="${escapeHtml(opts.postUrl)}" />
+    ${buttonMetas}
+    ${state ? `<meta property="fc:frame:state" content='${escapeHtml(state)}' />` : ""}
+  </head>
+  <body></body>
+</html>`;
+}
+
+// --- Frame endpoints ---
+app.get(["/frame", "/frame/"], (req, res) => {
+  const baseUrl = getBaseUrl(req);
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.setHeader("Cache-Control", "no-store");
+  return res.status(200).send(
+    frameHtml({
+      imageUrl: `${baseUrl}/frame/image.png?screen=home`,
+      postUrl: `${baseUrl}/frame/action`,
+      buttons: [{ label: "Play" }, { label: "Move" }],
+      state: { screen: "home" },
+    }),
+  );
 });
 
-// SPA fallback
-app.get("/{*path}", (_req, res) => {
-  res.sendFile(path.join(publicDir, "index.html"));
+app.post(["/frame/action", "/frame/action/"], (req, res) => {
+  const baseUrl = getBaseUrl(req);
+  const buttonIndex = Number(req.body?.untrustedData?.buttonIndex || 0);
+  let state: any = { screen: "home", moves: 0 };
+  try {
+    if (req.body?.untrustedData?.state) state = JSON.parse(req.body.untrustedData.state);
+  } catch {}
+
+  if (state.screen === "home") {
+    if (buttonIndex === 1) {
+      state = { screen: "play", moves: 0 };
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.setHeader("Cache-Control", "no-store");
+      return res.status(200).send(
+        frameHtml({
+          imageUrl: `${baseUrl}/frame/image.png?screen=play&n=0`,
+          postUrl: `${baseUrl}/frame/action`,
+          buttons: [
+            { label: "UP" },
+            { label: "LEFT" },
+            { label: "DOWN" },
+            { label: "RIGHT" },
+          ],
+          state,
+        }),
+      );
+    }
+    // button 2 -> go to move screen as well
+    state = { screen: "play", moves: 0 };
+  } else if (state.screen === "play") {
+    state.moves = Number(state.moves || 0) + 1;
+  }
+
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.setHeader("Cache-Control", "no-store");
+  return res.status(200).send(
+    frameHtml({
+      imageUrl: `${baseUrl}/frame/image.png?screen=play&n=${state.moves || 0}`,
+      postUrl: `${baseUrl}/frame/action`,
+      buttons: [
+        { label: "UP" },
+        { label: "LEFT" },
+        { label: "DOWN" },
+        { label: "RIGHT" },
+      ],
+      state,
+    }),
+  );
 });
 
-export default async function handler(req: any, res: any) {
-  await ensureRoutes();
+app.get(["/frame/image.png", "/frame/image.png/"], (req, res) => {
+  // Return a small PNG (favicon) for max Farcaster compatibility.
+  const imgPath = path.resolve(process.cwd(), "client", "public", "favicon.png");
+  res.setHeader("Content-Type", "image/png");
+  res.setHeader("Cache-Control", "no-store");
+  return res.sendFile(imgPath);
+});
+
+// Root: simple info page
+app.get("/", (_req, res) => {
+  res.setHeader("Content-Type", "text/plain; charset=utf-8");
+  res.status(200).send("OK. Frame: /frame");
+});
+
+export default function handler(req: any, res: any) {
   return app(req, res);
 }
