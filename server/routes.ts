@@ -63,7 +63,7 @@ export async function registerRoutes(
     res.setHeader("Cache-Control", "no-store");
     return res.status(200).send(
       frameHtml({
-        imageUrl: `${baseUrl}/frame/image?screen=home`,
+        imageUrl: `${baseUrl}/frame/image.png?screen=home`,
         postUrl: `${baseUrl}/frame/action`,
         buttons: [{ label: "Play daily" }, { label: "Leaderboard" }],
         state: { screen: "home" },
@@ -115,7 +115,7 @@ export async function registerRoutes(
         res.setHeader("Cache-Control", "no-store");
         return res.status(200).send(
           frameHtml({
-            imageUrl: `${baseUrl}/frame/image?screen=play`,
+            imageUrl: `${baseUrl}/frame/image.png?screen=play`,
             postUrl: `${baseUrl}/frame/action`,
             buttons: [{ label: "UP" }, { label: "LEFT" }, { label: "DOWN" }, { label: "RIGHT" }],
             state,
@@ -129,7 +129,7 @@ export async function registerRoutes(
         res.setHeader("Cache-Control", "no-store");
         return res.status(200).send(
           frameHtml({
-            imageUrl: `${baseUrl}/frame/image?screen=leaderboard`,
+            imageUrl: `${baseUrl}/frame/image.png?screen=leaderboard`,
             postUrl: `${baseUrl}/frame/action`,
             buttons: [{ label: "Back" }],
             state,
@@ -159,7 +159,7 @@ export async function registerRoutes(
       res.setHeader("Cache-Control", "no-store");
       return res.status(200).send(
         frameHtml({
-          imageUrl: `${baseUrl}/frame/image?screen=play&n=${moves.length}`,
+          imageUrl: `${baseUrl}/frame/image.png?screen=play&n=${moves.length}`,
           postUrl: `${baseUrl}/frame/action`,
           buttons: [{ label: "UP" }, { label: "LEFT" }, { label: "DOWN" }, { label: "RIGHT" }],
           state,
@@ -174,7 +174,7 @@ export async function registerRoutes(
       res.setHeader("Cache-Control", "no-store");
       return res.status(200).send(
         frameHtml({
-          imageUrl: `${baseUrl}/frame/image?screen=home`,
+          imageUrl: `${baseUrl}/frame/image.png?screen=home`,
           postUrl: `${baseUrl}/frame/action`,
           buttons: [{ label: "Play daily" }, { label: "Leaderboard" }],
           state,
@@ -187,7 +187,7 @@ export async function registerRoutes(
     res.setHeader("Cache-Control", "no-store");
     return res.status(200).send(
       frameHtml({
-        imageUrl: `${baseUrl}/frame/image?screen=home`,
+        imageUrl: `${baseUrl}/frame/image.png?screen=home`,
         postUrl: `${baseUrl}/frame/action`,
         buttons: [{ label: "Play daily" }, { label: "Leaderboard" }],
         state: { screen: "home" },
@@ -195,6 +195,27 @@ export async function registerRoutes(
     );
   });
 
+  // NOTE: Farcaster clients often don't render SVGs in frame images reliably.
+  // Serve a PNG for maximum compatibility.
+  app.get("/frame/image.png", async (req, res) => {
+    const screen = String(req.query.screen || "home");
+
+    // For MVP, return favicon.png as a placeholder image.
+    // (We can switch to real dynamic PNG rendering later.)
+    try {
+      const fs = await import("fs");
+      const path = await import("path");
+      const imgPath = path.resolve(process.cwd(), "dist", "public", "favicon.png");
+      res.setHeader("Content-Type", "image/png");
+      res.setHeader("Cache-Control", "no-store");
+      return fs.createReadStream(imgPath).pipe(res);
+    } catch (e) {
+      // fallback: 204
+      return res.status(204).end();
+    }
+  });
+
+  // Kept for debugging: SVG generator
   app.get("/frame/image", async (req, res) => {
     const screen = String(req.query.screen || "home");
 
