@@ -118,12 +118,22 @@ app.post(["/frame/action", "/frame/action/"], (req, res) => {
   );
 });
 
-app.get(["/frame/image.png", "/frame/image.png/"], (req, res) => {
-  // Return a small PNG (favicon) for max Farcaster compatibility.
+function sendPng(res: any) {
   const imgPath = path.resolve(process.cwd(), "client", "public", "favicon.png");
   res.setHeader("Content-Type", "image/png");
   res.setHeader("Cache-Control", "no-store");
   return res.sendFile(imgPath);
+}
+
+app.get(["/frame/image.png", "/frame/image.png/"], (_req, res) => {
+  // Small PNG placeholder for max Farcaster compatibility.
+  return sendPng(res);
+});
+
+// Some Farcaster clients / crawlers fetch the image URL under /api/*.
+// Provide a non-edge fallback here so it always works.
+app.get(["/api/og", "/api/og/"], (_req, res) => {
+  return sendPng(res);
 });
 
 // Root: redirect to the frame (so pasting the domain works)
