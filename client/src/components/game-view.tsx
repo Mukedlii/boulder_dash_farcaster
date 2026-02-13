@@ -22,6 +22,9 @@ export function GameView({ seed, onGameOver }: GameViewProps) {
     const [isGameOver, setIsGameOver] = useState(false);
     const [gameResult, setGameResult] = useState<any>(null);
 
+    // Touch swipe support (mobile): makes controls work even if pointer events/buttons are flaky
+    const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+
     useEffect(() => {
         if (!gameRef.current) return;
 
@@ -82,12 +85,39 @@ export function GameView({ seed, onGameOver }: GameViewProps) {
         }
     }, [isGameOver, gameResult, onGameOver]);
 
-    // Mobile Controls
+    // Controls
     const handleControl = (dx: number, dy: number) => {
         const gameScene = phaserRef.current?.scene.getScene('Game') as GameScene;
         if (gameScene && gameScene.scene.isActive()) {
             gameScene.setNextMove(dx, dy);
         }
+    };
+
+    const onTouchStart = (e: React.TouchEvent) => {
+        const t = e.touches[0];
+        if (!t) return;
+        touchStartRef.current = { x: t.clientX, y: t.clientY };
+    };
+
+    const onTouchEnd = (e: React.TouchEvent) => {
+        const start = touchStartRef.current;
+        touchStartRef.current = null;
+        if (!start) return;
+
+        const t = e.changedTouches[0];
+        if (!t) return;
+
+        const dx = t.clientX - start.x;
+        const dy = t.clientY - start.y;
+        const absX = Math.abs(dx);
+        const absY = Math.abs(dy);
+
+        // Small taps shouldn't move
+        const threshold = 18;
+        if (absX < threshold && absY < threshold) return;
+
+        if (absX > absY) handleControl(dx > 0 ? 1 : -1, 0);
+        else handleControl(0, dy > 0 ? 1 : -1);
     };
 
     return (
@@ -105,7 +135,12 @@ export function GameView({ seed, onGameOver }: GameViewProps) {
             </div>
 
             {/* Game Container */}
-            <div className="relative border-4 border-muted rounded-lg overflow-hidden shadow-2xl bg-black">
+            <div
+                className="relative border-4 border-muted rounded-lg overflow-hidden shadow-2xl bg-black"
+                onTouchStart={onTouchStart}
+                onTouchEnd={onTouchEnd}
+                style={{ touchAction: 'none' }}
+            >
                 <div ref={gameRef} className="w-full h-full" />
                 
                 {isGameOver && gameResult && (
@@ -133,17 +168,53 @@ export function GameView({ seed, onGameOver }: GameViewProps) {
             {/* Mobile Controls */}
             <div className="grid grid-cols-3 gap-2 md:hidden w-48 mt-4">
                 <div />
-                <Button variant="outline" size="icon" className="h-16 w-16 rounded-none border-2 border-primary/50 bg-background/50 active:bg-primary/20" onPointerDown={() => handleControl(0, -1)}>
+                <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-16 w-16 rounded-none border-2 border-primary/50 bg-background/50 active:bg-primary/20"
+                    onPointerDown={() => handleControl(0, -1)}
+                    onTouchStart={(e) => {
+                        e.preventDefault();
+                        handleControl(0, -1);
+                    }}
+                >
                     <ArrowUp className="h-8 w-8" />
                 </Button>
                 <div />
-                <Button variant="outline" size="icon" className="h-16 w-16 rounded-none border-2 border-primary/50 bg-background/50 active:bg-primary/20" onPointerDown={() => handleControl(-1, 0)}>
+                <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-16 w-16 rounded-none border-2 border-primary/50 bg-background/50 active:bg-primary/20"
+                    onPointerDown={() => handleControl(-1, 0)}
+                    onTouchStart={(e) => {
+                        e.preventDefault();
+                        handleControl(-1, 0);
+                    }}
+                >
                     <ArrowLeft className="h-8 w-8" />
                 </Button>
-                <Button variant="outline" size="icon" className="h-16 w-16 rounded-none border-2 border-primary/50 bg-background/50 active:bg-primary/20" onPointerDown={() => handleControl(0, 1)}>
+                <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-16 w-16 rounded-none border-2 border-primary/50 bg-background/50 active:bg-primary/20"
+                    onPointerDown={() => handleControl(0, 1)}
+                    onTouchStart={(e) => {
+                        e.preventDefault();
+                        handleControl(0, 1);
+                    }}
+                >
                     <ArrowDown className="h-8 w-8" />
                 </Button>
-                <Button variant="outline" size="icon" className="h-16 w-16 rounded-none border-2 border-primary/50 bg-background/50 active:bg-primary/20" onPointerDown={() => handleControl(1, 0)}>
+                <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-16 w-16 rounded-none border-2 border-primary/50 bg-background/50 active:bg-primary/20"
+                    onPointerDown={() => handleControl(1, 0)}
+                    onTouchStart={(e) => {
+                        e.preventDefault();
+                        handleControl(1, 0);
+                    }}
+                >
                     <ArrowRight className="h-8 w-8" />
                 </Button>
             </div>
