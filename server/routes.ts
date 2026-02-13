@@ -51,14 +51,25 @@ function svgResponse(res: any, svg: string) {
   res.status(200).send(svg);
 }
 
+function getBaseUrl(req: any): string {
+  // Prefer explicit config if provided
+  const configured = process.env.PUBLIC_URL;
+  if (configured) return configured.replace(/\/$/, "");
+
+  const proto = (req.headers["x-forwarded-proto"] || req.protocol || "http") as string;
+  const host = (req.headers["x-forwarded-host"] || req.headers.host || "") as string;
+  if (!host) return "";
+  return `${proto}://${host}`;
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
 
   // === Farcaster Frame (MVP) ===
-  app.get("/frame", (_req, res) => {
-    const baseUrl = process.env.PUBLIC_URL || "";
+  app.get("/frame", (req, res) => {
+    const baseUrl = getBaseUrl(req);
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Cache-Control", "no-store");
     return res.status(200).send(
@@ -80,7 +91,7 @@ export async function registerRoutes(
       if (untrusted?.state) state = JSON.parse(untrusted.state);
     } catch {}
 
-    const baseUrl = process.env.PUBLIC_URL || "";
+    const baseUrl = getBaseUrl(req);
 
     // Home screen
     if (!state?.screen || state.screen === "home") {
