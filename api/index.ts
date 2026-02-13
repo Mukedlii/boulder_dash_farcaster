@@ -56,22 +56,24 @@ function frameHtml(opts: {
 // --- Frame endpoints ---
 app.get(["/frame", "/frame/"], (req, res) => {
   const baseUrl = getBaseUrl(req);
+  const v = (req.query?.v || req.query?.t || "1") as string;
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.setHeader("Cache-Control", "no-store");
   return res.status(200).send(
     frameHtml({
-      imageUrl: `${baseUrl}/frame/image.png?screen=home&v=2`,
-      postUrl: `${baseUrl}/frame/action`,
+      imageUrl: `${baseUrl}/frame/image.png?screen=home&v=${encodeURIComponent(v)}`,
+      postUrl: `${baseUrl}/frame/action?v=${encodeURIComponent(v)}`,
       buttons: [{ label: "Play" }, { label: "Move" }],
-      state: { screen: "home" },
+      state: { screen: "home", v },
     }),
   );
 });
 
 app.post(["/frame/action", "/frame/action/"], (req, res) => {
   const baseUrl = getBaseUrl(req);
+  const v = (req.query?.v || "1") as string;
   const buttonIndex = Number(req.body?.untrustedData?.buttonIndex || 0);
-  let state: any = { screen: "home", moves: 0 };
+  let state: any = { screen: "home", moves: 0, v };
   try {
     if (req.body?.untrustedData?.state) state = JSON.parse(req.body.untrustedData.state);
   } catch {}
@@ -83,8 +85,8 @@ app.post(["/frame/action", "/frame/action/"], (req, res) => {
       res.setHeader("Cache-Control", "no-store");
       return res.status(200).send(
         frameHtml({
-          imageUrl: `${baseUrl}/frame/image.png?screen=play&n=0&v=2`,
-          postUrl: `${baseUrl}/frame/action`,
+          imageUrl: `${baseUrl}/frame/image.png?screen=play&n=0&v=${encodeURIComponent(state.v || v)}`,
+          postUrl: `${baseUrl}/frame/action?v=${encodeURIComponent(state.v || v)}`,
           buttons: [
             { label: "UP" },
             { label: "LEFT" },
@@ -105,8 +107,8 @@ app.post(["/frame/action", "/frame/action/"], (req, res) => {
   res.setHeader("Cache-Control", "no-store");
   return res.status(200).send(
     frameHtml({
-      imageUrl: `${baseUrl}/frame/image.png?screen=play&n=${state.moves || 0}&v=2`,
-      postUrl: `${baseUrl}/frame/action`,
+      imageUrl: `${baseUrl}/frame/image.png?screen=play&n=${state.moves || 0}&v=${encodeURIComponent(state.v || v)}`,
+      postUrl: `${baseUrl}/frame/action?v=${encodeURIComponent(state.v || v)}`,
       buttons: [
         { label: "UP" },
         { label: "LEFT" },
