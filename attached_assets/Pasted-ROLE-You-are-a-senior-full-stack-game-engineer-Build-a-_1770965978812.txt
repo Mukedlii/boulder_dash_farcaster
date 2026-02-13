@@ -1,0 +1,96 @@
+ROLE: You are a senior full‑stack game engineer. Build a production-ready MVP with clean code, tests where reasonable, and clear setup steps. Prefer simple, reliable solutions over fancy ones.
+
+Goal
+
+Create a retro grid-based arcade game inspired by Boulder Dash mechanics (do NOT use the “Boulder Dash” name/branding). Mobile-first web game + backend with points system + seasons + leaderboard + anti-cheat. The game will be opened from a Farcaster Frame/Miniapp, so it must run well in an in-app browser.
+
+Tech constraints
+
+• Frontend: TypeScript + Phaser 3 (preferred) OR PixiJS if you strongly prefer; responsive canvas; works on iOS Safari.
+• Backend: Node.js + TypeScript + Express (or Fastify), simple SQLite (preferred) or Postgres if available.
+• Auth (MVP): implement “guest session” now; structure code so we can later swap to Farcaster Sign-In (SIWF) / Neynar. Still create a userId per session.
+• Hosting: single Replit project; include run scripts.
+• Security: do NOT trust client score. Implement basic server validation and tamper detection.
+Gameplay (core loop)
+
+• Grid-based cave map (e.g., 20x14 visible; can be bigger with camera).
+• Player moves 1 tile per step (tap controls + keyboard arrows).
+• Tiles:  • Dirt (walkable, disappears when stepped on)
+  • Wall/Steel (solid)
+  • Boulder/Rock (falls with gravity if space below; can roll left/right if supported)
+  • Gems/Diamonds (collectible; increase score)
+  • Exit (locked until required gems collected)
+  • Enemies (simple AI; touching kills player)
+
+• Physics:  • Gravity ticks (e.g., 8–12 Hz). Falling rocks can kill player/enemies.
+  • Deterministic simulation: given seed + input sequence, outcome is reproducible.
+
+• Win condition: collect N gems then reach exit.
+• Lose condition: death or time limit (optional).
+Modes
+
+1. Daily Challenge  • Each day has a deterministic seeded level (same for everyone).
+  • Players can attempt multiple times.
+  • Score is based on: gems collected, time remaining, + bonus for finishing; penalties for deaths.
+
+2. Practice  • Random seed; no leaderboard; still grants small points for engagement (optional).
+
+Backend features
+
+• Endpoints:  • GET /api/daily → returns today’s seed, level config, season info.
+  • POST /api/run/start → create a runId, return serverNonce.
+  • POST /api/run/finish → submit results.
+  • GET /api/leaderboard/daily and GET /api/leaderboard/season
+  • GET /api/me → current user summary (points, rank).
+
+• Data model (SQLite):  • users(id, createdAt, lastSeenAt)
+  • runs(id, userId, mode, seed, startedAt, finishedAt, durationMs, result, score, proofHash, suspiciousFlag)
+  • leaderboards (materialized or computed queries)
+  • points_ledger(id, userId, type, amount, metadataJson, createdAt)
+  • seasons(id, startAt, endAt, name)
+
+• Points system (MVP rules):  • Daily completion bonus once/day.
+  • Top percentile bonuses at end of day/season (store as ledger entries).
+  • Diminishing returns: repeated attempts same day yield less points (but allow for leaderboard).
+
+• Anti-cheat (MVP):  • Server issues serverNonce at run start.
+  • Client records input stream (directions + timestamps or ticks) and final state summary.
+  • Client sends proof = hash(serverNonce + seed + inputStream + finalScore + durationMs).
+  • Server re-simulates the run deterministically from seed + inputStream (or validates via simplified verifier if full resim is too much) and compares score/state. If mismatch → flag suspicious, don’t award points.
+  • Rate limit per user/session.
+
+Frontend requirements
+
+• Touch controls: on-screen D-pad + action button (optional).
+• UI:  • Start screen: Daily / Practice
+  • In-game HUD: gems remaining, score, timer
+  • End screen: score, “Submit”, leaderboard preview
+
+• Accessibility: basic; avoid tiny text.
+• Performance: smooth on mobile.
+Project structure
+
+• Monorepo in one Replit:  • /client Phaser app
+  • /server API
+  • root scripts to run both (concurrently)
+ my_agent, [Febr. 2026. 13 07:52]
+• Include a clear README.md with:  • how to run
+  • environment variables
+  • how daily seed is generated
+  • how to deploy
+  • next steps for Farcaster SIWF integration
+
+Deliverables
+
+1. Working game with at least 3 handcrafted levels + daily seeded generator.
+2. Daily leaderboard works.
+3. Points ledger works.
+4. Basic anti-cheat implemented (at least nonce + hash + server-side validation/replay).
+5. Clean code, comments on tricky parts, and a short “future improvements” section.
+Extra (nice-to-have if time)
+
+• Simple level editor JSON format
+• Sound toggle
+• Share link generator (for Farcaster post)
+Start by outlining the architecture, then generate the code and file tree. Keep iteration loops short: build playable core first, then backend, then anti-cheat, then polish.
+
